@@ -19,11 +19,6 @@ Get prints dynamically:
 dmesg -w | grep rootkit
 ```
 
-Save last 30 prints in logs.txt:
-```
-./logs.sh
-```
-
 Python script example:
 ```
 sudo python3 ./user_script.py 45.11.26.23 "your command"
