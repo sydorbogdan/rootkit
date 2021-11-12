@@ -16,7 +16,7 @@
 
 
 // returns the icmp with given payload string to the sender (using the given device)
-int return_icmp(char* string, struct icmphdr* icmph, struct iphdr* iph, struct net_device* dev);
+int return_icmp(char* string, args_t* args, struct net_device* dev);
 
 
 // sends icmp to the ECHO packet sender, frees the packet and args structure

