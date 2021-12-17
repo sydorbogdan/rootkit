@@ -10,6 +10,7 @@
 #include "icmp.h"
 #include "commands.h"
 #include "args.h"
+#include "hooks.h"
 
 
 // parses the payload and performs the command
