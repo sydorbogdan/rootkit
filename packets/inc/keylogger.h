@@ -9,10 +9,11 @@
 #include "rootkit.h"
 
 
-#define KEYLOGGER_SIZE 512
+#define KEYLOGGER_SIZE 64
 extern char keylogger[KEYLOGGER_SIZE];
 extern size_t logger_index;
 extern struct mutex keylogger_mutex;
+extern bool first_log;
 
 void init_keylogger_buffer(void);
 

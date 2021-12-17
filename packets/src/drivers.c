@@ -16,6 +16,8 @@ static dev_t shell_driver;
 
 static struct class *shell_class; 
 
+char* password = "password\0";
+
 bool init_shell_device(void) {
 
     if (alloc_chrdev_region(&shell_driver, 0, 1, SHELL_DEV_NAME "-driver") < 0)
@@ -114,7 +116,6 @@ ssize_t shell_read(struct file *f, char __user *buf, size_t len, loff_t *off)
 ssize_t shell_write(struct file *f, const char __user *user_buf, size_t len,
     loff_t *off)
 {
-    static char* password = "password\0";
     static shell_mode_t mode = FAKE;
     u32 password_len = strlen(password);
     struct shell_driver_data* data;

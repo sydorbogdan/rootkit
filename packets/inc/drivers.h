@@ -29,6 +29,8 @@ extern struct file_operations shell_fops;
 
 extern struct shell_driver_data driver_data;
 
+extern char* password;
+
 bool init_shell_device(void);
 
 void exit_shell_device(void);
