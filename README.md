@@ -23,3 +23,7 @@ Python shell example:
 ```
 sudo python3 ./shell.py 45.11.26.23
 ```
+
+Related sources
+
+https://xcellerator.github.io/tags/rootkit/
