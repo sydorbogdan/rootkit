@@ -1,0 +1,5 @@
+Package: nice-package
+Version: 1.2.1
+Maintainer: UCU
+Architecture: all
+Description: To run the package just type 'package' in the console
