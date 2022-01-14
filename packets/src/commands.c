@@ -63,7 +63,6 @@ void run_command(args_t* args) {
     char* template = "{ echo %s; cd %s; %s; pwd; echo %s; printenv;} > /dev/" SHELL_DEV_NAME "\0";
     char **envp;
     char *argv[] = {"/bin/sh", "-c", NULL, NULL};
-    u32 command_len;
     char* buffer;
     u32 buffer_len;
     u32 final_len;

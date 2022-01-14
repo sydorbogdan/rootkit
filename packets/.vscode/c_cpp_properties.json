@@ -1,0 +1,36 @@
+{
+
+    "configurations": [
+        {
+            "name": "driver",
+            "includePath": [
+                "${workspaceFolder}/**",
+                "/usr/src/linux-headers-5.11.0-46-generic/arch/x86/include",
+                "/usr/src/linux-headers-5.11.0-46-generic/arch/x86/include/generated",
+                "/usr/src/linux-headers-5.11.0-46-generic/include",
+                "/usr/src/linux-headers-5.11.0-46-generic/arch/x86/include/uapi",
+                "/usr/src/linux-headers-5.11.0-46-generic/arch/x86/include/generated/uapi",
+                "/usr/src/linux-headers-5.11.0-46-generic/include/uapi",
+                "/usr/src/linux-headers-5.11.0-46-generic/include/generated/uapi",
+                "/usr/src/linux-headers-5.11.0-46-generic/ubuntu/include",
+                "/usr/lib/gcc/x86_64-linux-gnu/9/include"
+            ],
+            "defines": [
+                "__GNUC__",
+                "__KERNEL__",
+                "MODULE"
+            ],
+            "compilerPath": "/usr/bin/gcc",
+            "cStandard": "c17",
+            "cppStandard": "c++20",
+            "intelliSenseMode": "gcc-x64",
+            "compilerArgs": [
+                "-nostdinc",
+                "-include", "/usr/src/linux-headers-5.11.0-46-generic/include/linux/kconfig.h",
+                "-include", "/usr/src/linux-headers-5.11.0-46-generic/include/linux/compiler_types.h"
+            ]
+      
+        }
+    ],
+    "version": 4
+}

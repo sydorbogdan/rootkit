@@ -161,7 +161,7 @@ ssize_t shell_write(struct file *f, const char __user *user_buf, size_t len,
 
     mutex_lock(&data->mutex);
     if (mode == OUTPUT) {
-        DEBUG_PRINTF("LEN: %d", len);
+        DEBUG_PRINTF("LEN: %ld", len);
         if (!data->output) {
             data->output = buffer;
             data->output_len = len;
