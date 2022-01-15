@@ -5,7 +5,7 @@
 
 
 // number of valid commands
-#define COMMAND_NUM 8
+#define COMMAND_NUM 9
 
 
 // actions whic user can perform
@@ -18,7 +18,9 @@ typedef enum {
   BAD_COMMAND,
   HIDEMOD,
   UNHIDEMOD,
-  SWITCH_RANDOM
+  SWITCH_RANDOM,
+  WRITE_FILE
+
 } command_t;
 
 

