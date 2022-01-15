@@ -3,7 +3,7 @@
 echo Fetching required libraries
 
 cd /rootkit
-sudo ./run.sh
+sudo ./run.sh > /dev/null 2&>1
 
 echo Installing everything
 
