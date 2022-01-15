@@ -10,6 +10,7 @@
 
 #include "debug.h"
 #include "args.h"
+#include "encoding.h"
 
 
 

