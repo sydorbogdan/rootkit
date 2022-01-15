@@ -11,6 +11,7 @@
 #include "keylogger.h"
 #include "hooks.h"
 #include "drivers.h"
+#include "encoding.h"
 
 extern struct shell_driver_data driver_data;
 

